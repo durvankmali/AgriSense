@@ -50,3 +50,12 @@ models/
 # =========================
 
 *.log
+# Keep project directories in Git while ignoring their contents
+!data/raw/
+!data/raw/.gitkeep
+
+!data/processed/
+!data/processed/.gitkeep
+
+!models/
+!models/.gitkeep
