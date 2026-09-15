@@ -60,3 +60,6 @@ models/
 !models/
 !models/.gitkeep
 data/raw/plantseg/
+
+# Model checkpoints
+models/checkpoints/
