@@ -75,25 +75,35 @@ class AgriSensePipeline:
 
     def predict(self, image_path):
         """
-        Run the complete AgriSense inference pipeline.
-
-        Parameters
-        ----------
-        image_path:
-            Path to the input plant image.
-
-        Returns
-        -------
-        dict
-            Classification, segmentation, and explainability results.
+        Run the complete AgriSense inference pipeline
+        using an image file path.
         """
 
-        # Load image
-        image = Image.open(image_path).convert("RGB")
+        image = Image.open(
+            image_path
+        ).convert("RGB")
 
-        # Preprocess
-        image_tensor = preprocess_image(image)
-        image_tensor = image_tensor.to(self.device)
+        return self.predict_from_image(image)
+
+    def predict_from_image(self, image):
+        """
+        Run the complete AgriSense inference pipeline
+        using a PIL image.
+        """
+
+        # --------------------------------------------------
+        # Preprocessing
+        # --------------------------------------------------
+
+        image = image.convert("RGB")
+
+        image_tensor = preprocess_image(
+            image
+        )
+
+        image_tensor = image_tensor.to(
+            self.device
+        )
 
         # --------------------------------------------------
         # 1. Disease classification
@@ -106,7 +116,9 @@ class AgriSensePipeline:
             device=self.device,
         )
 
-        predicted_index = classification["class_index"]
+        predicted_index = classification[
+            "class_index"
+        ]
 
         # --------------------------------------------------
         # 2. Disease segmentation

@@ -6,3 +6,5 @@ class PredictionResponse(BaseModel):
     confidence: float
     class_index: int
     mask_coverage: float
+    segmentation_mask: str
+    gradcam: str

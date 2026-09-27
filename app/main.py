@@ -1,4 +1,5 @@
-from pathlib import Path
+import base64
+import io
 
 from fastapi import FastAPI, File, UploadFile
 from PIL import Image
@@ -9,13 +10,41 @@ from src.inference.pipeline import AgriSensePipeline
 
 app = FastAPI(
     title="AgriSense API",
-    description="Crop disease classification, localization, and explainability API.",
+    description=(
+        "Crop disease classification, localization, "
+        "and explainability API."
+    ),
     version="1.0.0",
 )
 
 
 # Load the ML pipeline once when the API starts.
 pipeline = AgriSensePipeline()
+
+
+def array_to_base64_png(array):
+    """
+    Convert a normalized 2D NumPy array into
+    a grayscale PNG encoded as Base64.
+    """
+
+    array = (array * 255).clip(0, 255).astype("uint8")
+
+    image = Image.fromarray(
+        array,
+        mode="L",
+    )
+
+    buffer = io.BytesIO()
+
+    image.save(
+        buffer,
+        format="PNG",
+    )
+
+    return base64.b64encode(
+        buffer.getvalue()
+    ).decode("utf-8")
 
 
 @app.get("/")
@@ -37,35 +66,39 @@ def health_check():
     "/predict",
     response_model=PredictionResponse,
 )
-async def predict(file: UploadFile = File(...)):
+async def predict(
+    file: UploadFile = File(...),
+):
     """
     Run AgriSense inference on an uploaded plant image.
     """
 
     image_bytes = await file.read()
 
-    temporary_path = (
-        Path("temp_uploaded_image")
-        / file.filename
+    image = Image.open(
+        io.BytesIO(image_bytes)
+    ).convert("RGB")
+
+    result = pipeline.predict_from_image(
+        image
     )
 
-    temporary_path.parent.mkdir(
-        exist_ok=True
+    segmentation_mask = (
+        result["segmentation_mask"]
+        .squeeze()
     )
 
-    temporary_path.write_bytes(image_bytes)
-
-    result = pipeline.predict(
-        temporary_path
-    )
-
-    temporary_path.unlink(
-        missing_ok=True
-    )
+    gradcam = result["gradcam"]
 
     return {
         "disease": result["disease"],
         "confidence": result["confidence"],
         "class_index": result["class_index"],
         "mask_coverage": result["mask_coverage"],
+        "segmentation_mask": array_to_base64_png(
+            segmentation_mask
+        ),
+        "gradcam": array_to_base64_png(
+            gradcam
+        ),
     }
