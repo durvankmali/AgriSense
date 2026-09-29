@@ -100,8 +100,11 @@ def predict_classifier(
 
     predicted_disease = class_names[predicted_index]
 
+    CONFIDENCE_THRESHOLD = 0.65
+
     return {
         "disease": predicted_disease,
         "confidence": confidence,
         "class_index": predicted_index,
+        "uncertain": confidence < CONFIDENCE_THRESHOLD,
     }

@@ -1,13 +1,15 @@
 import base64
 import io
 
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-
-from fastapi import FastAPI, File, UploadFile
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 from app.schemas import PredictionResponse
 from src.inference.pipeline import AgriSensePipeline
+
+
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
 app = FastAPI(
@@ -18,6 +20,7 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,6 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Load the ML pipeline once when the API starts.
 pipeline = AgriSensePipeline()
 
@@ -40,7 +44,11 @@ def array_to_base64_png(array):
     a grayscale PNG encoded as Base64.
     """
 
-    array = (array * 255).clip(0, 255).astype("uint8")
+    array = (
+        (array * 255)
+        .clip(0, 255)
+        .astype("uint8")
+    )
 
     image = Image.fromarray(
         array,
@@ -64,6 +72,7 @@ def root():
     return {
         "message": "AgriSense API is running.",
         "status": "ok",
+        "version": "1.0.0",
     }
 
 
@@ -71,6 +80,9 @@ def root():
 def health_check():
     return {
         "status": "healthy",
+        "models_loaded": True,
+        "device": str(pipeline.device),
+        "num_classes": len(pipeline.class_names),
     }
 
 
@@ -85,15 +97,66 @@ async def predict(
     Run AgriSense inference on an uploaded plant image.
     """
 
+    # Basic content-type validation.
+    if file.content_type not in {
+        "image/jpeg",
+        "image/png",
+    }:
+        raise HTTPException(
+            status_code=400,
+            detail="Only JPEG and PNG images are supported.",
+        )
+
     image_bytes = await file.read()
 
-    image = Image.open(
-        io.BytesIO(image_bytes)
-    ).convert("RGB")
+    # File-size protection.
+    if len(image_bytes) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail="Image file is too large. Maximum size is 10 MB.",
+        )
 
-    result = pipeline.predict_from_image(
-        image
-    )
+    if not image_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail="The uploaded file is empty.",
+        )
+
+    # Verify that the uploaded bytes are actually
+    # a readable image.
+    try:
+        image = Image.open(
+            io.BytesIO(image_bytes)
+        )
+
+        image.verify()
+
+        image = Image.open(
+            io.BytesIO(image_bytes)
+        ).convert("RGB")
+
+    except UnidentifiedImageError:
+        raise HTTPException(
+            status_code=400,
+            detail="The uploaded file is not a valid image.",
+        )
+
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="The uploaded image could not be processed.",
+        )
+
+    try:
+        result = pipeline.predict_from_image(
+            image
+        )
+
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred while analyzing the image.",
+        )
 
     segmentation_mask = (
         result["segmentation_mask"]
@@ -106,6 +169,7 @@ async def predict(
         "disease": result["disease"],
         "confidence": result["confidence"],
         "class_index": result["class_index"],
+        "uncertain": result["uncertain"],
         "mask_coverage": result["mask_coverage"],
         "segmentation_mask": array_to_base64_png(
             segmentation_mask

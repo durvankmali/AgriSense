@@ -148,6 +148,7 @@ class AgriSensePipeline:
             "disease": classification["disease"],
             "confidence": classification["confidence"],
             "class_index": classification["class_index"],
+            "uncertain": classification["uncertain"],
             "mask_coverage": segmentation["coverage"],
             "segmentation_mask": (
                 segmentation["mask"]

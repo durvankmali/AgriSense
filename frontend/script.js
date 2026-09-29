@@ -63,6 +63,9 @@ const newAnalysisButton =
 const diseaseName =
     document.getElementById("diseaseName");
 
+const resultLabel =
+    document.getElementById("resultLabel");
+
 const confidenceValue =
     document.getElementById("confidenceValue");
 
@@ -368,10 +371,14 @@ function displayResults(result) {
         Number(result.mask_coverage) * 100;
 
 
+    if (result.uncertain) {
+        resultLabel.textContent = "LOW CONFIDENCE PREDICTION";
+    } else {
+    resultLabel.textContent = "DETECTED CONDITION";
+    }
+
     diseaseName.textContent =
-        formatDiseaseName(
-            result.disease
-        );
+        formatDiseaseName(result.disease);
 
 
     confidenceValue.textContent =

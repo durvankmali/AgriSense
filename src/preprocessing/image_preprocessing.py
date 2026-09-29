@@ -38,7 +38,7 @@ def resize_and_pad(image: Image.Image, size: int = IMAGE_SIZE):
 
     image = image.resize(
         (new_width, new_height),
-        Image.Resampling.LANCZOS,
+        Image.Resampling.BILINEAR
     )
 
     padded_image = Image.new(
