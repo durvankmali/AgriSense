@@ -1,6 +1,8 @@
 import base64
 import io
 
+import traceback
+
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, UnidentifiedImageError
@@ -93,6 +95,7 @@ def health_check():
 async def predict(
     file: UploadFile = File(...),
 ):
+    print("[PREDICT] request received", flush=True)
     """
     Run AgriSense inference on an uploaded plant image.
     """
@@ -108,6 +111,11 @@ async def predict(
         )
 
     image_bytes = await file.read()
+
+    print(
+        f"[PREDICT] file received | size={len(image_bytes)} bytes",
+        flush=True,
+    )
 
     # File-size protection.
     if len(image_bytes) > MAX_FILE_SIZE:
@@ -152,10 +160,12 @@ async def predict(
             image
         )
 
-    except Exception:
+    except Exception as exc:
+        print(f"[PREDICT] pipeline error: {exc}", flush=True)
+        traceback.print_exc()
         raise HTTPException(
             status_code=500,
-            detail="An error occurred while analyzing the image.",
+            detail="Prediction failed.",
         )
 
     segmentation_mask = (

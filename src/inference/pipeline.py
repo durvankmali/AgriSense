@@ -1,5 +1,7 @@
 from PIL import Image
 
+import time
+
 import torch
 
 from src.config import (
@@ -85,25 +87,57 @@ class AgriSensePipeline:
 
         return self.predict_from_image(image)
 
+
+    def _log_memory(self, stage):
+        memory_mb = None
+
+        try:
+            with open("/proc/self/status", "r") as f:
+                for line in f:
+                    if line.startswith("VmRSS:"):
+                        memory_mb = int(line.split()[1]) / 1024
+                        break
+        except OSError:
+            pass
+
+        if memory_mb is not None:
+            print(
+                f"[PREDICT] {stage} | memory={memory_mb:.1f} MB",
+                flush=True,
+            )
+        else:
+            print(
+                f"[PREDICT] {stage}",
+                flush=True,
+            )
+
+
     def predict_from_image(self, image):
+
         """
         Run the complete AgriSense inference pipeline
         using a PIL image.
         """
+
+        start_time = time.perf_counter()
+
+        print("[PREDICT] handler reached", flush=True)
+        self._log_memory("start")
 
         # --------------------------------------------------
         # Preprocessing
         # --------------------------------------------------
 
         image = image.convert("RGB")
+        image_tensor = preprocess_image(image)
+        image_tensor = image_tensor.to(self.device)
 
-        image_tensor = preprocess_image(
-            image
+        print(
+            f"[PREDICT] preprocessing complete | "
+            f"time={time.perf_counter() - start_time:.2f}s",
+            flush=True,
         )
-
-        image_tensor = image_tensor.to(
-            self.device
-        )
+        self._log_memory("after preprocessing")
 
         # --------------------------------------------------
         # 1. Disease classification
@@ -116,9 +150,14 @@ class AgriSensePipeline:
             device=self.device,
         )
 
-        predicted_index = classification[
-            "class_index"
-        ]
+        print(
+            f"[PREDICT] classification complete | "
+            f"time={time.perf_counter() - start_time:.2f}s",
+            flush=True,
+        )
+        self._log_memory("after classification")
+
+        predicted_index = classification["class_index"]
 
         # --------------------------------------------------
         # 2. Disease segmentation
@@ -131,6 +170,13 @@ class AgriSensePipeline:
             threshold=SEGMENTATION_THRESHOLD,
         )
 
+        print(
+            f"[PREDICT] segmentation complete | "
+            f"time={time.perf_counter() - start_time:.2f}s",
+            flush=True,
+        )
+        self._log_memory("after segmentation")
+
         # --------------------------------------------------
         # 3. Grad-CAM
         # --------------------------------------------------
@@ -140,30 +186,41 @@ class AgriSensePipeline:
             class_index=predicted_index,
         )
 
+        print(
+            f"[PREDICT] gradcam complete | "
+            f"time={time.perf_counter() - start_time:.2f}s",
+            flush=True,
+        )
+        self._log_memory("after gradcam")
+
         # --------------------------------------------------
         # 4. Combined result
         # --------------------------------------------------
 
-        return {
+        result = {
             "disease": classification["disease"],
             "confidence": classification["confidence"],
             "class_index": classification["class_index"],
             "uncertain": classification["uncertain"],
             "mask_coverage": segmentation["coverage"],
             "segmentation_mask": (
-                segmentation["mask"]
-                .detach()
-                .cpu()
-                .numpy()
+                segmentation["mask"].detach().cpu().numpy()
             ),
             "segmentation_probability": (
-                segmentation["probability_map"]
-                .detach()
-                .cpu()
-                .numpy()
+                segmentation["probability_map"].detach().cpu().numpy()
             ),
             "gradcam": cam,
         }
+
+        print(
+            f"[PREDICT] result prepared | "
+            f"time={time.perf_counter() - start_time:.2f}s",
+            flush=True,
+        )
+        self._log_memory("final")
+
+        return result
+
 
     def close(self):
         """
