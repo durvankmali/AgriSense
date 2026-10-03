@@ -7,19 +7,8 @@ def build_classifier(
     num_classes: int = 115,
     device: torch.device | None = None,
 ):
-    """
-    Build the final AgriSense ResNet-18 classifier.
-
-    Architecture:
-    - ImageNet-pretrained ResNet-18
-    - Frozen backbone
-    - Fine-tuned Layer 4
-    - Custom classification head
-    """
-
-    weights = models.ResNet18_Weights.DEFAULT
-
-    model = models.resnet18(weights=weights)
+    
+    model = models.resnet18(weights=None)
 
     # Freeze the complete backbone
     for param in model.parameters():
