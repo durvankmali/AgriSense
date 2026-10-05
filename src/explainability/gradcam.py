@@ -32,31 +32,15 @@ class GradCAM:
         self.gradients = grad_output[0]
 
     def generate(
-        self,
-        image_tensor: torch.Tensor,
-        class_index: int,
+    self,
+    image_tensor: torch.Tensor,
+    class_index: int,
     ):
         """
         Generate a normalized Grad-CAM heatmap.
-
-        Parameters
-        ----------
-        image_tensor:
-            Preprocessed image tensor of shape [1, 3, 224, 224].
-
-        class_index:
-            Disease class index whose activation should be explained.
-
-        Returns
-        -------
-        cam:
-            Normalized Grad-CAM heatmap as a NumPy array.
-
-        output:
-            Raw classifier output tensor.
         """
 
-        self.model.zero_grad()
+        self.model.zero_grad(set_to_none=True)
 
         output = self.model(image_tensor)
 
@@ -105,10 +89,22 @@ class GradCAM:
             cam_max - cam_min + 1e-8
         )
 
-        return (
-            cam.detach().cpu().numpy(),
-            output.detach(),
-        )
+        # Move only the final CAM to CPU.
+        cam_numpy = cam.detach().cpu().numpy()
+
+        # The raw model output is not needed by the production pipeline.
+        del target_score
+        del weights
+        del cam
+        del gradients
+        del activations
+        del output
+
+        # Clear hook references so they don't retain tensors.
+        self.gradients = None
+        self.activations = None
+
+        return cam_numpy
 
     def close(self):
         """

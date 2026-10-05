@@ -159,7 +159,7 @@ def predict_segmentation(
 
     image_tensor = image_tensor.to(device)
 
-    with torch.no_grad():
+    with torch.inference_mode():
         logits = model(image_tensor)
         probabilities = torch.sigmoid(logits)
 

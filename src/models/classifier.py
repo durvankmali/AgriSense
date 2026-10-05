@@ -75,7 +75,7 @@ def predict_classifier(
 
     image_tensor = image_tensor.to(device)
 
-    with torch.no_grad():
+    with torch.inference_mode():
         outputs = model(image_tensor)
         probabilities = torch.softmax(outputs, dim=1)
 

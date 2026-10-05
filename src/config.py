@@ -50,6 +50,9 @@ DEVICE = torch.device(
     "cuda" if torch.cuda.is_available() else "cpu"
 )
 
+torch.set_num_threads(1)
+torch.set_num_interop_threads(1)
+
 
 # ============================================================
 # Image configuration
@@ -66,19 +69,19 @@ SEGMENTATION_THRESHOLD = 0.4
 # Disease classes
 # ============================================================
 
-import pandas as pd
+import csv
 
 
 def load_disease_classes():
-    """
-    Load disease class names in the same sorted order
-    used during model training.
-    """
+    diseases = set()
 
-    df = pd.read_csv(CLEAN_METADATA_PATH)
+    with open(CLEAN_METADATA_PATH, "r", encoding="utf-8", newline="") as file:
+        reader = csv.DictReader(file)
 
-    disease_classes = sorted(
-        df["Disease"].dropna().unique()
-    )
+        for row in reader:
+            disease = row.get("Disease")
 
-    return disease_classes
+            if disease:
+                diseases.add(disease.strip())
+
+    return sorted(diseases)

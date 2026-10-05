@@ -181,9 +181,9 @@ class AgriSensePipeline:
         # 3. Grad-CAM
         # --------------------------------------------------
 
-        cam, _ = self.gradcam.generate(
-            image_tensor=image_tensor,
-            class_index=predicted_index,
+        cam = self.gradcam.generate(
+        image_tensor=image_tensor,
+        class_index=predicted_index,
         )
 
         print(
