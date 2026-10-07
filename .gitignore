@@ -33,33 +33,24 @@ __pycache__/
 Thumbs.db
 
 # =========================
-# Data
+# Raw Dataset
 # =========================
 
-data/raw/
-data/processed/
+data/raw/*
+!data/raw/.gitkeep
 
 # =========================
 # Trained Models
 # =========================
 
-models/
+models/checkpoints/*.pth
+
+# Keep production model checkpoints tracked through Git LFS
+!models/checkpoints/resnet18_extended_finetuned_latest.pth
+!models/checkpoints/unet_segmentation_best.pth
 
 # =========================
 # Logs
 # =========================
 
 *.log
-# Keep project directories in Git while ignoring their contents
-!data/raw/
-!data/raw/.gitkeep
-
-!data/processed/
-!data/processed/.gitkeep
-
-!models/
-!models/.gitkeep
-data/raw/plantseg/
-
-# Model checkpoints
-models/checkpoints/
