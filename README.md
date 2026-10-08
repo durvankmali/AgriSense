@@ -4,6 +4,8 @@ AgriSense is an end-to-end computer vision platform for crop disease identificat
 
 The project combines a fine-tuned ResNet-18 classifier, a lightweight U-Net segmentation model, Grad-CAM explainability, and a FastAPI inference backend with a web-based frontend.
 
+---
+
 ## Project Overview
 
 ### Problem
@@ -18,20 +20,24 @@ AgriSense addresses this by building a complete image-based pipeline that:
 4. Generates a Grad-CAM explanation showing image regions influencing the classification.
 5. Exposes the complete inference pipeline through an API and web interface.
 
+---
+
 ## Key Features
 
-- Multi-class plant disease classification across **115 disease classes**
-- Fine-tuned **ResNet-18** classifier
-- Lightweight **U-Net** for disease-region segmentation
-- **Grad-CAM** visual explanations
-- Confidence-based uncertainty indication
-- Aspect-ratio-preserving image preprocessing
-- Duplicate and conflicting-label detection
-- Cross-split leakage control
-- FastAPI backend
-- Interactive browser frontend
-- Dockerized deployment
-- Git/GitHub version-controlled workflow
+* Multi-class plant disease classification across **115 disease classes**
+* Fine-tuned **ResNet-18** classifier
+* Lightweight **U-Net** for disease-region segmentation
+* **Grad-CAM** visual explanations
+* Confidence-based uncertainty indication
+* Aspect-ratio-preserving image preprocessing
+* Duplicate and conflicting-label detection
+* Cross-split leakage control
+* FastAPI backend
+* Interactive browser frontend
+* Dockerized deployment
+* Git/GitHub version-controlled workflow
+
+---
 
 ## System Architecture
 
@@ -41,7 +47,7 @@ AgriSense addresses this by building a complete image-based pipeline that:
                     +-------------+-------------+
                     |                           |
                     v                           v
-             Image Preprocessing        Image Preprocessing
+             Image Preprocessing         Image Preprocessing
                     |                           |
                     v                           v
              ResNet-18 Classifier       U-Net Segmentation
@@ -61,93 +67,99 @@ AgriSense addresses this by building a complete image-based pipeline that:
 
 The production inference pipeline returns:
 
-- predicted disease
-- confidence score
-- class index
-- uncertainty flag
-- segmentation mask
-- mask coverage
-- Grad-CAM visualization
+* predicted disease
+* confidence score
+* class index
+* uncertainty flag
+* segmentation mask
+* mask coverage
+* Grad-CAM visualization
+
+---
 
 ## Dataset
 
-AgriSense uses the PlantSeg dataset.
+AgriSense uses the **PlantSeg** dataset.
 
-### Original dataset
+### Original Dataset
 
-| Property | Value |
-|---|---:|
-| Images | 7,774 |
-| Plants | 34 |
-| Diseases | 115 |
-| Missing metadata values | 0 |
+| Property                | Value |
+| ----------------------- | ----: |
+| Images                  | 7,774 |
+| Plants                  |    34 |
+| Diseases                |   115 |
+| Missing metadata values |     0 |
 
 The original dataset contained duplicate image contents and conflicting disease labels, so data-quality checks were performed before model development.
 
-### Clean dataset
+### Clean Dataset
 
 The final modeling dataset contains:
 
-| Property | Value |
-|---|---:|
-| Records | 7,399 |
-| Unique image contents | 7,399 |
-| Training | 5,084 |
-| Validation | 811 |
-| Test | 1,504 |
-| Duplicate image contents | 0 |
-| Cross-split duplicate contents | 0 |
+| Property                       | Value |
+| ------------------------------ | ----: |
+| Records                        | 7,399 |
+| Unique image contents          | 7,399 |
+| Training                       | 5,084 |
+| Validation                     |   811 |
+| Test                           | 1,504 |
+| Duplicate image contents       |     0 |
+| Cross-split duplicate contents |     0 |
 
-### Data quality processing
+### Data Quality Processing
 
 The cleaning workflow included:
 
-- duplicate-content detection using image hashes
-- conflicting-label detection
-- removal of records associated with conflicting image contents
-- cross-split leakage checks
-- metadata and filesystem consistency checks
-- image integrity checks
-- image-size and aspect-ratio analysis
-- plant-label validation
+* duplicate-content detection using image hashes
+* conflicting-label detection
+* removal of records associated with conflicting image contents
+* cross-split leakage checks
+* metadata and filesystem consistency checks
+* image integrity checks
+* image-size and aspect-ratio analysis
+* plant-label validation
 
 A total of **98 conflicting image contents**, corresponding to **205 records**, were removed.
 
 The final dataset contains no duplicate image contents and no cross-split duplicate contents.
 
+---
+
 ## Image Preprocessing
 
 The final classifier and production inference pipeline use:
 
-- RGB conversion
-- resize while preserving aspect ratio
-- padding to **224 × 224**
-- black padding
-- BILINEAR interpolation
-- ImageNet normalization
+* RGB conversion
+* resize while preserving aspect ratio
+* padding to **224 × 224**
+* black padding
+* BILINEAR interpolation
+* ImageNet normalization
 
 Training additionally uses:
 
-- random horizontal flipping
-- random rotation up to 10 degrees
+* random horizontal flipping
+* random rotation up to 10 degrees
 
 This approach avoids indiscriminate cropping of heterogeneous plant images.
 
-## Disease Classification
+---
 
-### Model
+# Disease Classification
 
-**ResNet-18**, initialized from the torchvision architecture and fine-tuned for the 115 disease classes.
+## Model
 
-Training configuration:
+**ResNet-18** was used as the classification model and fine-tuned for the 115 disease classes.
 
-- Trainable layers: `layer4` and final classification layer
-- Optimizer: Adam
-- Learning rate: `0.0001`
-- Scheduler: ReduceLROnPlateau
-- Early stopping
-- Batch size: 16
-- Training epochs: 10
+### Training Configuration
+
+* Trainable layers: `layer4` and final classification layer
+* Optimizer: Adam
+* Learning rate: `0.0001`
+* Scheduler: ReduceLROnPlateau
+* Early stopping
+* Batch size: 16
+* Training epochs: 10
 
 The final checkpoint is:
 
@@ -155,73 +167,94 @@ The final checkpoint is:
 models/checkpoints/resnet18_extended_finetuned_latest.pth
 ```
 
-### Final test performance
+## Model Development
 
-The authoritative test evaluation after aligning production preprocessing with the training/evaluation pipeline:
+The classification development process included multiple experiments.
 
-| Metric | Final Model |
-|---|---:|
-| Accuracy | **62.70%** |
-| Macro F1 | **51.48%** |
-| Weighted F1 | **61.24%** |
-| Top-5 Accuracy | **88.50%** |
+| Model / Experiment         |   Accuracy |   Macro F1 | Decision           |
+| -------------------------- | ---------: | ---------: | ------------------ |
+| Baseline ResNet-18         |     44.02% |     33.99% | Starting benchmark |
+| Class-weighted loss        |     42.09% |     33.68% | Rejected           |
+| Initial fine-tuning        |     59.44% |     46.50% | Improved           |
+| Final extended fine-tuning | **62.70%** | **51.48%** | Final model        |
 
-### Baseline comparison
+The baseline was used as a reference point rather than as the final selected model.
 
-| Metric | Baseline | Final Model | Improvement |
-|---|---:|---:|---:|
-| Accuracy | 44.02% | 62.70% | +18.68 pp |
-| Macro F1 | 33.99% | 51.48% | +17.49 pp |
-| Weighted F1 | 42.37% | 61.24% | +18.87 pp |
+The class-weighted experiment was evaluated separately and performed worse than the other approaches, so it was not used in the final classifier.
+
+## Final Test Performance
+
+The authoritative test evaluation after aligning production preprocessing with the training and evaluation pipeline:
+
+| Metric         | Final Model |
+| -------------- | ----------: |
+| Accuracy       |  **62.70%** |
+| Macro F1       |  **51.48%** |
+| Weighted F1    |  **61.24%** |
+| Top-5 Accuracy |  **88.50%** |
+
+### Improvement Over Baseline
+
+| Metric      | Baseline | Final Model | Improvement |
+| ----------- | -------: | ----------: | ----------: |
+| Accuracy    |   44.02% |      62.70% |   +18.68 pp |
+| Macro F1    |   33.99% |      51.48% |   +17.49 pp |
+| Weighted F1 |   42.37% |      61.24% |   +18.87 pp |
 
 The final model substantially improved over the baseline while retaining the original multi-class problem formulation.
 
-## Class Imbalance Experiment
+---
 
-A class-weighted training experiment was also evaluated.
+# Class Imbalance Experiment
+
+A class-weighted training experiment was evaluated to examine whether weighting classes differently would improve performance on the imbalanced dataset.
 
 Results:
 
-- Accuracy: 42.09%
-- Macro F1: 33.68%
-- Weighted F1: 41.62%
+* Accuracy: 42.09%
+* Macro F1: 33.68%
+* Weighted F1: 41.62%
 
-Because this performed substantially worse than the selected model, class weighting was not used in the final classifier.
+Because this performed worse than the other training approaches, class weighting was not used in the final classifier.
 
-## Error Analysis
+---
+
+# Error Analysis
 
 The final test set contained **561 incorrect predictions**.
 
 Of these:
 
-- Same-plant errors: 153 (27.27%)
-- Cross-plant errors: 408 (72.73%)
+* Same-plant errors: 153 (27.27%)
+* Cross-plant errors: 408 (72.73%)
 
 This indicates that a large proportion of errors occur across different plant categories rather than only between diseases affecting the same plant.
 
 The relationship between class support and F1 score was moderately positive:
 
-- Pearson correlation: 0.468
-- Spearman correlation: 0.488
+* Pearson correlation: 0.468
+* Spearman correlation: 0.488
 
 This analysis was used to understand model behavior beyond overall accuracy.
 
-## Disease-Region Segmentation
+---
 
-AgriSense uses a lightweight U-Net to estimate the disease region in an image.
+# Disease-Region Segmentation
 
-### Model
+AgriSense uses a lightweight **U-Net** to estimate the disease region in an image.
 
-- Encoder channels: 3 → 32 → 64 → 128
-- Bottleneck: 256
-- Decoder with skip connections
-- Output: single-channel disease probability map
-- Parameters: 1,928,417
-- Loss: BCE + Dice
-- Optimizer: Adam
-- Learning rate: 0.001
-- Batch size: 16
-- Training epochs: 5
+## Model
+
+* Encoder channels: 3 → 32 → 64 → 128
+* Bottleneck: 256
+* Decoder with skip connections
+* Output: single-channel disease probability map
+* Parameters: 1,928,417
+* Loss: BCE + Dice
+* Optimizer: Adam
+* Learning rate: 0.001
+* Batch size: 16
+* Training epochs: 5
 
 Checkpoint:
 
@@ -229,14 +262,14 @@ Checkpoint:
 models/checkpoints/unet_segmentation_best.pth
 ```
 
-### Final test performance
+## Final Test Performance
 
 At the calibrated threshold of **0.4**:
 
-| Metric | Score |
-|---|---:|
-| Dice | **0.5233** |
-| IoU | **0.3971** |
+| Metric         |      Score |
+| -------------- | ---------: |
+| Dice           | **0.5233** |
+| IoU            | **0.3971** |
 | Pixel Accuracy | **0.8198** |
 
 The threshold was selected using validation-set Dice performance.
@@ -245,7 +278,9 @@ The segmentation model provides useful disease-region localization, although sma
 
 **Mask coverage should not be interpreted as disease severity.**
 
-## Explainability with Grad-CAM
+---
+
+# Explainability with Grad-CAM
 
 Grad-CAM is applied to the final convolutional block of ResNet-18.
 
@@ -253,7 +288,9 @@ The generated heatmap provides a coarse visual indication of image regions that 
 
 A qualitative sample-level check showed that Grad-CAM can overlap meaningfully with annotated disease regions, but Grad-CAM is treated as an explanation mechanism rather than proof that the classifier has learned the true disease boundary.
 
-## Confidence and Uncertainty
+---
+
+# Confidence and Uncertainty
 
 The production classifier uses a confidence threshold of **0.65**.
 
@@ -263,48 +300,52 @@ Predictions below this threshold are marked:
 uncertain = true
 ```
 
-Validation analysis:
+### Validation Analysis
 
-- Mean confidence: 66.13%
-- Validation accuracy: 62.15%
-- Predictions accepted at 0.65: 54.62%
-- Accuracy among accepted validation predictions: 81.04%
+* Mean confidence: 66.13%
+* Validation accuracy: 62.15%
+* Predictions accepted at 0.65: 54.62%
+* Accuracy among accepted validation predictions: 81.04%
 
 The uncertainty flag is intended to communicate lower-confidence predictions. It is not a guarantee that a low-confidence prediction is incorrect.
 
-## End-to-End Inference
+---
+
+# End-to-End Inference
 
 ```text
 Upload Image
-      |
-      v
+     |
+     v
 Validate File
-      |
-      v
+     |
+     v
 Preprocess to 224x224
-      |
-      +--------------------+
-      |                    |
-      v                    v
+     |
+     +--------------------+
+     |                    |
+     v                    v
 ResNet-18              U-Net
-      |                    |
-      v                    v
+     |                    |
+     v                    v
 Disease + Confidence   Disease Mask
-      |                    |
-      +----------+---------+
-                 |
-                 v
-              Grad-CAM
-                 |
-                 v
-          Prediction Result
+     |                    |
+     +----------+---------+
+                |
+                v
+            Grad-CAM
+                |
+                v
+        Prediction Result
 ```
 
-## Backend
+---
+
+# Backend
 
 The application backend is implemented using **FastAPI**.
 
-### Main endpoints
+## Main Endpoints
 
 ```text
 GET  /health
@@ -318,7 +359,7 @@ GET  /docs
 
 The FastAPI application also validates uploaded files, including supported image types, empty uploads, corrupted images, and file-size limits.
 
-### Example response structure
+### Example Response Structure
 
 ```json
 {
@@ -332,20 +373,22 @@ The FastAPI application also validates uploaded files, including supported image
 }
 ```
 
-## Frontend
+---
+
+# Frontend
 
 The frontend is a responsive browser-based interface containing:
 
-- image upload and drag-and-drop support
-- image preview
-- analysis/loading state
-- prediction result
-- confidence display
-- disease-region visualization
-- Grad-CAM visualization
-- interpretation of the prediction
-- uncertainty indication
-- error handling
+* image upload and drag-and-drop support
+* image preview
+* analysis/loading state
+* prediction result
+* confidence display
+* disease-region visualization
+* Grad-CAM visualization
+* interpretation of the prediction
+* uncertainty indication
+* error handling
 
 Frontend structure:
 
@@ -356,84 +399,34 @@ frontend/
 └── script.js
 ```
 
-## Project Structure
+---
 
-```text
-AgriSense/
-│
-├── app/
-│   ├── __init__.py
-│   ├── main.py
-│   └── schemas.py
-│
-├── data/
-│   ├── raw/
-│   │   └── PlantSeg/
-│   │       ├── images/
-│   │       └── annotations/
-│   └── processed/
-│       └── agrisense_metadata_clean.csv
-│
-├── frontend/
-│   ├── index.html
-│   ├── style.css
-│   └── script.js
-│
-├── models/
-│   └── checkpoints/
-│       ├── resnet18_extended_finetuned_latest.pth
-│       └── unet_segmentation_best.pth
-│
-├── notebooks/
-│   ├── 01_eda.ipynb
-│   ├── ...
-│   └── 11_*.ipynb
-│
-├── src/
-│   ├── config.py
-│   ├── data_analysis.py
-│   ├── preprocessing/
-│   │   └── image_preprocessing.py
-│   ├── models/
-│   │   ├── classifier.py
-│   │   └── segmentation.py
-│   ├── inference/
-│   │   └── pipeline.py
-│   └── explainability/
-│       └── gradcam.py
-│
-├── .dockerignore
-├── Dockerfile
-├── requirements.txt
-└── README.md
-```
+# Local Setup
 
-## Local Setup
-
-### 1. Clone the repository
+## 1. Clone the Repository
 
 ```bash
 git clone https://github.com/durvankmali/AgriSense.git
 cd AgriSense
 ```
 
-### 2. Create and activate a virtual environment
+## 2. Create and Activate a Virtual Environment
 
-Windows PowerShell:
+### Windows PowerShell
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 ```
 
-Git Bash:
+### Git Bash
 
 ```bash
 python -m venv .venv
 source .venv/Scripts/activate
 ```
 
-### 3. Install dependencies
+## 3. Install Project Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -441,7 +434,17 @@ pip install -r requirements.txt
 
 The project is configured for CPU inference when CUDA is unavailable.
 
-### 4. Start the FastAPI server
+## 4. Install PyTorch
+
+PyTorch and torchvision are installed separately because the project uses the CPU-only PyTorch builds.
+
+For CPU-only installation:
+
+```bash
+pip install torch==2.14.0 torchvision==0.29.0 --index-url https://download.pytorch.org/whl/cpu
+```
+
+## 5. Start the FastAPI Server
 
 From the project root:
 
@@ -461,23 +464,92 @@ Interactive API documentation:
 http://127.0.0.1:8000/docs
 ```
 
-### 5. Start the frontend
+## 6. Start the Frontend
 
-The frontend can be served locally using a simple static HTTP server or a VS Code Live Server setup.
+The frontend can be served locally using VS Code Live Server or another static HTTP server.
 
-The local frontend is configured to communicate with the FastAPI backend.
+For VS Code Live Server, the frontend will typically be available at:
 
-## Docker
+```text
+http://127.0.0.1:5500
+```
+
+---
+
+# Local and Production API Configuration
+
+The API endpoint used by the frontend is configured in:
+
+```text
+frontend/script.js
+```
+
+## Local Development
+
+When running the FastAPI backend locally, use:
+
+```javascript
+const API_URL = "http://127.0.0.1:8000/predict";
+```
+
+The local FastAPI server must be running:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+## Public Deployment
+
+For the deployed Render frontend, use:
+
+```javascript
+const API_URL = "https://agrisense-api-9bzp.onrender.com/predict";
+```
+
+### Important
+
+The **Render API URL should remain active in the committed production version** of `frontend/script.js`.
+
+For local development, temporarily replace it with the localhost URL.
+
+A convenient configuration is:
+
+```javascript
+const API_URL = "https://agrisense-api-9bzp.onrender.com/predict";
+
+// LOCAL DEVELOPMENT:
+// const API_URL = "http://127.0.0.1:8000/predict";
+```
+
+When working locally:
+
+1. Comment the Render URL.
+2. Uncomment the localhost URL.
+3. Run the FastAPI backend locally.
+4. Run the frontend through Live Server.
+
+Before committing and pushing changes:
+
+1. Comment the localhost URL.
+2. Uncomment the Render URL.
+3. Verify the production URL is the active API endpoint.
+4. Then commit and push.
+
+This prevents the deployed frontend from attempting to call a user's local computer.
+
+---
+
+# Docker
 
 The project includes a CPU-based Docker configuration.
 
-Build:
+## Build
 
 ```bash
 docker build -t agrisense-api .
 ```
 
-Run:
+## Run
 
 ```bash
 docker run --rm -p 8000:8000 agrisense-api
@@ -489,18 +561,22 @@ Then open:
 http://127.0.0.1:8000/docs
 ```
 
-## Deployment
+The Docker image installs the CPU-only PyTorch and torchvision builds separately from the remaining Python requirements.
+
+---
+
+# Deployment
 
 The project was prepared for deployment using Render:
 
-- FastAPI backend deployed as a Docker Web Service
-- frontend deployed as a Render Static Site
-- model checkpoints managed with Git LFS
-- health endpoint configured for service monitoring
+* FastAPI backend deployed as a Docker Web Service
+* frontend deployed as a Render Static Site
+* model checkpoints managed with Git LFS
+* health endpoint configured for service monitoring
 
 The public deployment was useful for validating the complete deployment workflow.
 
-### Deployment limitation
+## Deployment Limitation
 
 The free backend environment has limited memory. The full inference pipeline includes classification, segmentation, and Grad-CAM, which creates a significant memory footprint.
 
@@ -508,7 +584,9 @@ The public backend successfully returned predictions, but repeated inference can
 
 For demonstrations, the **local deployment is the authoritative environment** because it provides stable execution of the complete pipeline.
 
-## Limitations
+---
+
+# Limitations
 
 1. Classification performance is not sufficient for autonomous agricultural diagnosis.
 2. Some disease classes have limited samples.
@@ -520,25 +598,29 @@ For demonstrations, the **local deployment is the authoritative environment** be
 8. Environmental/contextual information is not yet integrated into the prediction pipeline.
 9. Public free-tier deployment is constrained by memory and service lifecycle limits.
 
-## Future Scope
+---
+
+# Future Scope
 
 Potential extensions include:
 
-- improved fine-tuning and class-specific training strategies
-- stronger segmentation architectures
-- richer disease localization metrics
-- calibrated confidence estimates
-- environmental and contextual data integration
-- weather and location-aware risk analysis when appropriate data is available
-- agricultural advisory integration using trusted external sources
-- SQL-based prediction and analytics storage
-- dashboard-based historical analysis
-- improved cloud infrastructure for production inference
-- model monitoring and performance tracking
+* improved fine-tuning and class-specific training strategies
+* stronger segmentation architectures
+* richer disease localization metrics
+* calibrated confidence estimates
+* environmental and contextual data integration
+* weather and location-aware risk analysis when appropriate data is available
+* agricultural advisory integration using trusted external sources
+* SQL-based prediction and analytics storage
+* dashboard-based historical analysis
+* improved cloud infrastructure for production inference
+* model monitoring and performance tracking
 
 These are future extensions and are not represented as currently implemented features.
 
-## Development Workflow
+---
+
+# Development Workflow
 
 The project was developed using a version-controlled workflow with Git and GitHub.
 
@@ -563,26 +645,56 @@ Major development stages included:
 
 Model checkpoints are stored separately from the source-code logic and tracked using Git LFS.
 
-## Final Verification Summary
+---
 
-| Component | Status |
-|---|---|
-| Clean dataset | Complete |
-| Duplicate/leakage checks | Complete |
-| ResNet-18 classifier | Complete |
-| U-Net segmentation | Complete |
-| Grad-CAM | Complete |
-| Confidence/uncertainty logic | Complete |
-| FastAPI backend | Complete |
-| Frontend | Complete |
-| Docker | Complete |
-| Local end-to-end inference | Verified |
+# Git Workflow
+
+Typical development workflow:
+
+```bash
+git status
+git add .
+git commit -m "Describe the change"
+git push
+git status
+```
+
+Before pushing production frontend changes, verify that the active API URL in:
+
+```text
+frontend/script.js
+```
+
+is the Render API URL.
+
+---
+
+# Final Verification Summary
+
+| Component                    | Status                             |
+| ---------------------------- | ---------------------------------- |
+| Clean dataset                | Complete                           |
+| Duplicate/leakage checks     | Complete                           |
+| ResNet-18 classifier         | Complete                           |
+| U-Net segmentation           | Complete                           |
+| Grad-CAM                     | Complete                           |
+| Confidence/uncertainty logic | Complete                           |
+| FastAPI backend              | Complete                           |
+| Frontend                     | Complete                           |
+| Docker                       | Complete                           |
+| Local end-to-end inference   | Verified                           |
 | Public deployment experiment | Verified with resource limitations |
 
-## License and Dataset
+---
+
+# License and Dataset
 
 The project uses the PlantSeg dataset. Refer to the original dataset source and license information before redistribution of dataset images or annotations.
 
 ---
 
-**AgriSense** is designed as an end-to-end applied computer vision project demonstrating the complete path from messy image data and quality control to model development, evaluation, explainability, API integration, and deployment.
+## Conclusion
+
+AgriSense demonstrates an end-to-end applied computer vision workflow, covering data quality analysis, dataset cleaning, leakage control, model development, evaluation, segmentation, explainability, API integration, frontend development, Dockerization, and deployment testing.
+
+The project combines disease classification with disease-region segmentation and Grad-CAM explainability to provide a more informative result than classification alone.
