@@ -439,6 +439,15 @@ source .venv/Scripts/activate
 pip install -r requirements.txt
 ```
 
+### Install PyTorch
+
+PyTorch and torchvision are installed separately because the project uses the CPU-only PyTorch builds.
+
+For CPU-only installation:
+
+```bash
+pip install torch==2.14.0 torchvision==0.29.0 --index-url https://download.pytorch.org/whl/cpu
+
 The project is configured for CPU inference when CUDA is unavailable.
 
 ### 4. Start the FastAPI server
